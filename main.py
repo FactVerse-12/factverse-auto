@@ -9,27 +9,34 @@ VOICE = "hi-IN-MadhurNeural"
 FACE_FILE = "my_face.jpg"
 
 FACTS_LONG = [
-    ("Samudra Ke Andar Behti Nadi Ka Raaz", "Atlantic Ocean ke neeche scientists ne ek aisi nadi khoji hai jo samudra ke andar behti hai. Iska paani samudra se 10 guna zyada namkeen hai. Iski lambai 35 kilometer hai.", "deep ocean river"),
-    ("Bermuda Triangle Me 75 Ships Gayab", "Pichle 100 saalon me Bermuda Triangle me 75 ships aur 20 planes achanak gayab ho gaye. Pilot ne aakhri message me kaha aasman hara dikh raha hai.", "bermuda triangle storm"),
-    ("Insaan Sote Hue Bhi Jagta Hai", "Jab aap sote ho tab aapka dimaag 20 percent zyada tez kaam karta hai. Wo aapki yaadon ko delete aur save karta hai.", "human brain dream"),
+    ("Samudra Ke Andar Behti Nadi Ka Raaz", "Atlantic Ocean ke neeche scientists ne ek aisi nadi khoji hai jo samudra ke andar behti hai. Iska paani samudra se 10 guna zyada namkeen hai. Iski lambai 35 kilometer hai.", (5,40,80)),
+    ("Bermuda Triangle Me 75 Ships Gayab", "Pichle 100 saalon me Bermuda Triangle me 75 ships aur 20 planes achanak gayab ho gaye. Pilot ne aakhri message me kaha aasman hara dikh raha hai.", (20,20,20)),
 ]
 FACTS_SHORT = [
-    ("Chand Par 96 Bags Kachra", "Apollo ke astronauts chand par 96 bags kachra chhod aaye the jo aaj bhi wahi pada hai.", "moon surface"),
-    ("Octopus Ke 3 Dil Hote Hain", "Octopus ke 3 dil aur 9 dimaag hote hain. Tairte waqt uska ek dil band ho jata hai.", "octopus underwater"),
+    ("Chand Par 96 Bags Kachra", "Apollo ke astronauts chand par 96 bags kachra chhod aaye the jo aaj bhi wahi pada hai.", (30,30,60)),
 ]
 
 def get_type():
     h = datetime.datetime.utcnow().hour
     return "LONG" if h in [0,9,15] else "SHORT"
 
-def download_image(keyword, name):
+def safe_image(keyword, name, fallback_color):
     try:
-        url = f"https://source.unsplash.com/1280x720/?{keyword.replace(' ', ',')}"
-        r = requests.get(url, timeout=15)
+        url = f"https://picsum.photos/1280/720?random={random.randint(1,10000)}"
+        r = requests.get(url, timeout=20)
         open(name, 'wb').write(r.content)
+        # Validate
+        Image.open(name).verify()
         return name
     except:
-        return None
+        # Agar download fail to apna khud ka HD background banao
+        img = Image.new('RGB', (1280,720), fallback_color)
+        d = ImageDraw.Draw(img)
+        try: f = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 40)
+        except: f = ImageFont.load_default()
+        d.text((100,300), keyword.upper(), font=f, fill="white")
+        img.save(name)
+        return name
 
 async def make_voice(text):
     ssml = f"<speak><voice name='{VOICE}'><prosody pitch='-12%' rate='-8%' volume='+30%'>{text}</prosody></voice></speak>"
@@ -79,19 +86,12 @@ def upload_yt(title, desc, file):
 
 async def main():
     vtype = get_type()
-    topic_data = random.choice(FACTS_LONG if vtype=="LONG" else FACTS_SHORT)
-    t, s, kw = topic_data
+    t, s, color = random.choice(FACTS_LONG if vtype=="LONG" else FACTS_SHORT)
     title = f"{t} | 99% Log Nahi Jante 😱" if vtype=="LONG" else f"{t} #Shorts"
     script = f"{t}. {s} Aise hi facts ke liye FactVerse India ko subscribe karo."
     dur = random.randint(200,400) if vtype=="LONG" else 28
 
-    imgs = []
-    for i in range(3):
-        p = download_image(kw, f"p{i}.jpg")
-        if p: imgs.append(p)
-    if not imgs:
-        p = download_image("nature", "p0.jpg")
-        imgs = [p]
+    imgs = [safe_image(t, f"p{i}.jpg", color) for i in range(3)]
 
     await make_voice(script)
     make_thumb(title, imgs[0])
