@@ -15,7 +15,12 @@ jobs:
           python-version: '3.10'
       - name: Install dependencies
         run: pip install -r requirements.txt
-      - name: Run Bot
+      - name: Create token file
+        env:
+          YOUTUBE_TOKEN_JSON: ${{ secrets.YOUTUBE_TOKEN_JSON }}
         run: |
-          echo '${{ secrets.YOUTUBE_TOKEN_JSON }}' > token.json
-          python main.py
+          python -c "import os; open('token.json','w', encoding='utf-8').write(os.environ['YOUTUBE_TOKEN_JSON'])"
+          echo "Token file created, size:"
+          wc -c token.json
+      - name: Run Bot
+        run: python main.py
