@@ -1,6 +1,7 @@
 import os, json, random, textwrap, datetime
 from gtts import gTTS
 from moviepy.editor import *
+if not hasattr(Image, 'ANTIALIAS'): Image.ANTIALIAS = Image.LANCZOS
 from PIL import Image, ImageDraw
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
