@@ -1,35 +1,66 @@
-import os, json, random, textwrap, datetime
-from gtts import gTTS
-from moviepy.editor import *
-from PIL import Image, ImageDraw
-if not hasattr(Image, 'ANTIALIAS'): Image.ANTIALIAS = Image.LANCZOS
-from google.oauth2.credentials import Credentials
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
+import os, random, json
+from PIL import Image, ImageDraw, ImageFont
+import googleapiclient.discovery
+import googleapiclient.errors
 
-hour = datetime.datetime.now().hour
-VIDEO_TYPE = "short" if hour in [0, 14] else "long"
-facts_short = ["Madhumakkhi kabhi soti nahi!", "Octopus ke 3 dil hote hain!", "Paani garam hone par jaldi jamta hai!", "Insan ka dimag 20 watt bijli se chalta hai!"]
-facts_long = ["Samudra ke rahasya: 80% samundar abhi tak explore nahi hua hai, waha aliens jaise jeev hain!", "Bermuda Triangle ka sach: Waha bhoot nahi, kharab mausam ki wajah se jahaj gayab hote hain!", "Neend ka science: Aap sote hue bhi awaze sunte hain, isiliye alarm se jaagte hain!"]
-fact = random.choice(facts_short if VIDEO_TYPE=="short" else facts_long)
-title = (fact[:85] + " #Shorts") if VIDEO_TYPE=="short" else fact[:90]
-gTTS(fact, lang='hi').save('voice.mp3')
-W,H = (1080,1920) if VIDEO_TYPE=="short" else (1920,1080)
-img = Image.new('RGB', (W,H), (15,15,50))
-draw = ImageDraw.Draw(img)
-wrapped = "\n".join(textwrap.wrap(fact, width=30 if VIDEO_TYPE=="short" else 50))
-draw.text((80,700) if VIDEO_TYPE=="short" else (100,400), wrapped, fill=(255,255,255))
-if os.path.exists('host.jpg'):
+# === 1. VIRAL TITLE GENERATOR ===
+def get_viral_fact():
+    viral_facts = [
+        {"fact": "Octopuses have 3 hearts and blue blood!", "hook": "This animal will SHOCK you!"},
+        {"fact": "Bananas are berries but strawberries are not!", "hook": "You've been lied to!"},
+        {"fact": "NASA found a planet made of diamonds!", "hook": "NASA Hid This For Years!"},
+        {"fact": "Your brain generates 20 watts of power!", "hook": "Your brain is POWERFUL!"},
+        # AI will pick random
+    ]
+    return random.choice(viral_facts)
+
+def make_viral_title(fact):
+    templates = [
+        f"{fact['hook']} 😱 #shorts",
+        f"Wait Till You Hear This! {fact['fact']} 🤯",
+        f"Nobody Knows This Fact! {fact['fact']} #viral",
+        f"This Will Blow Your Mind! 🤯 {fact['fact']}",
+        f"Google Hid This! {fact['fact']} #facts"
+    ]
+    return random.choice(templates)
+
+# === 2. VIRAL THUMBNAIL MAKER ===
+def create_thumbnail(text, filename="thumbnail.jpg"):
+    img = Image.new('RGB', (1080, 1920), color=(0,0,0))
+    draw = ImageDraw.Draw(img)
+    # Big Bold Text
     try:
-        host = Image.open('host.jpg').resize((300,300))
-        img.paste(host, (W-400, H-400))
-    except: pass
-img.save('frame.jpg')
-audio = AudioFileClip('voice.mp3')
-video = ImageClip('frame.jpg').set_duration(audio.duration).set_audio(audio)
-video.write_videofile('final.mp4', fps=24, codec='libx264', audio_codec='aac')
-if os.path.exists('token.json'):
-    creds = Credentials.from_authorized_user_file('token.json', ['https://www.googleapis.com/auth/youtube.upload'])
-    youtube = build('youtube', 'v3', credentials=creds)
-    req = youtube.videos().insert(part="snippet,status", body={"snippet": {"title": title, "description": fact+" #FactVerse", "tags": ["facts"], "categoryId": "27"}, "status": {"privacyStatus": "public"}}, media_body=MediaFileUpload('final.mp4'))
-    req.execute()
+        font = ImageFont.truetype("DejaVuSans-Bold.ttf", 90)
+    except:
+        font = ImageFont.load_default()
+    
+    # Center text with yellow color
+    draw.text((80, 700), text[:30] + "...", font=font, fill=(255, 255, 0), stroke_width=8, stroke_fill=(0,0,0))
+    draw.text((80, 900), "FACT!", font=font, fill=(255,0,0), stroke_width=10, stroke_fill=(255,255,255))
+    img.save(filename)
+    print(f"Thumbnail created: {filename}")
+    return filename
+
+# === 3. YOUR UPLOAD FUNCTION ===
+# Use this title + description
+fact_data = get_viral_fact()
+viral_title = make_viral_title(fact_data)
+viral_desc = f"""{fact_data['fact']}
+
+{fact_data['hook']}
+
+Follow for daily mind-blowing facts! 👇
+
+#factverse #shorts #viral #amazingfacts #facts #trending #didyouknow #india #psychologyfacts #sciencefacts #viralshorts
+"""
+
+print(f"TITLE: {viral_title}")
+print(f"DESC: {viral_desc}")
+
+# Create thumbnail
+create_thumbnail(fact_data['fact'])
+
+# --- YOUR EXISTING UPLOAD CODE BELOW ---
+# youtube = ... 
+# Just use viral_title and viral_desc in your insert request
+# And upload thumbnail.jpg as custom thumbnail
